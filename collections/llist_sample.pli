@@ -1,0 +1,56 @@
+   dcl accounts type _llist suppress(uninit);             /* the list */
+   dcl 1 account based (konten.head),     /* the node */
+         2 next type _node,
+         2 data,
+           3 value fixed,
+           3 bankid dec fixed(5),
+           3 accid dec fixed(11);
+   /* data-specific cmp func;
+      -1 = is smaller, +1 = is bigger, 0 = is equal */
+   accounts_cmp: proc(pp_data, pp_key) returns(bin fixed(15));
+     dcl pp_data  ptr;
+     dcl p_data like account based(pp_data);
+     dcl pp_key  ptr;
+     dcl p_key like account based(pp_key);
+
+     select;
+       when(  p_data.bankid>p_key.bankid
+           ! (p_data.bankid=p_key.bankid & p_data.accid > p_key.accid))
+           return(1);
+       when(  p_data.bankid<p_key.bankid
+           ! (p_data.bankid=p_key.bankid & p_data.accid < p_key.accid))
+           return(-1);
+       otherwise
+           return(0);
+     end;
+   end accounts_cmp;
+ 
+   dcl i bin fixed(31);
+
+   /* init list */                            
+   call ll_init(accounts);
+   accounts.cmp = accounts_cmp;
+   
+   /* fill list */
+   do i = 1 to 10;
+     ALLOCATE account;
+     accounts.Head -> Value = 20+i;
+     accounts.Head -> blz   = 50000+i;
+     call ll_add(accounts);
+   end;
+
+   /* iterate list */
+   call ll_get_head(accounts);
+   DO WHILE (accounts.Current ^= NULL () );
+      $trace((accounts.cURRENT -> vALUE)); /* use value */
+      call ll_get_next(accounts);
+   END;
+
+   /* search in list */
+   dcl account_search type account; /* for search criteria */
+   account_search.blz=50003; /* key! */
+   account_search.kto=0;
+   if 0 = ll_get_keyed(accounts, addr(account_search))
+   then $trace("found");
+   else $trace("not found");
+   
